@@ -11,7 +11,7 @@ type Secret struct {
 	Username string
 }
 
-func getSecret(ctx context.Context, client *vault.Client, secretID, mountpath string) (Secret, error) {
+func GetSecret(ctx context.Context, client *vault.Client, secretID, mountpath string) (Secret, error) {
 	rValue := Secret{}
 	//read the secret for the readAPPNAME()
 	_, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))

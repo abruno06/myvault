@@ -6,6 +6,14 @@ import (
 	"os"
 )
 
+//Configuration file format to be saved as config.json in the same directory as the binary
+// {
+// 	"VAULTURL": "https://xxx.xxx.xxx.xxx:8200"
+// 	"APPNAME": "myapp",
+// 	"CERTIFICATE": "web",
+// 	"MOUNTPATH": "kv"
+// }
+
 var VAULTURL = "https://172.0.0.1:8200"
 var APPNAME = "myapp"
 

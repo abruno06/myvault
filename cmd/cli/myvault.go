@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"sort"
@@ -174,7 +173,7 @@ func connectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey) (*vault.C
 		//fallback to username and password as pin is not correct
 		//read the username and password from the user
 		fmt.Println("PIN is not correct, fallback to username and password")
-		username, password := readUsernamePassword()
+		username, password := interactif.ReadUsernamePassword()
 		return connectVaultWithUsernamePassword(ctx, username, password)
 	}
 
@@ -240,17 +239,6 @@ func connectVaultWithUsernamePassword(ctx context.Context, username, password st
 
 	return client, err
 
-}
-
-// ask for username and password and return them
-func readUsernamePassword() (string, string) {
-	fmt.Print("Enter Username: ")
-	var username string
-	fmt.Scanln(&username)
-	fmt.Print("Enter Password: ")
-	var password string
-	fmt.Scanln(&password)
-	return username, password
 }
 
 // convert the map[string]interface {}  to Secret
@@ -777,70 +765,6 @@ func readMountPath() string {
 	return "kv"
 }
 
-//build a password generator function that will generate a password based on the given length and complexity attributes
-// the password will be returned as string
-
-func randomPassword(lengh int, lowercase, uppercase, digit, special bool, specialList string) string {
-
-	if lengh < 0 {
-		lengh = 12
-	}
-	//build the list of characters
-	var charList string
-	if lowercase {
-		charList = charList + "abcdefghijklmnopqrstuvwxyz"
-	}
-	if uppercase {
-		charList = charList + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	}
-	if digit {
-		charList = charList + "0123456789"
-	}
-	if special {
-		charList = charList + specialList
-	}
-	//build the password using this constraints
-	// countains at least one lowercase character
-	// countains at least one uppercase character
-	// countains at least one digit
-	// countains at least one special character
-	// countains at least one character from the given list
-	var rValue string
-	for {
-		for i := 0; i < lengh; i++ {
-			rValue = rValue + string(charList[rand.Intn(len(charList))])
-		}
-		//check constraints
-		if lowercase {
-			if !strings.ContainsAny(rValue, "abcdefghijklmnopqrstuvwxyz") {
-				rValue = ""
-				continue
-			}
-		}
-		if uppercase {
-			if !strings.ContainsAny(rValue, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
-				rValue = ""
-				continue
-			}
-		}
-		if digit {
-			if !strings.ContainsAny(rValue, "0123456789") {
-				rValue = ""
-				continue
-			}
-		}
-		if special {
-			if !strings.ContainsAny(rValue, specialList) {
-				rValue = ""
-				continue
-			}
-		}
-		break
-	}
-	return rValue
-
-}
-
 // main function
 func main() {
 	//read the configuration file
@@ -866,7 +790,7 @@ func main() {
 	} else {
 		fmt.Println("No Yubikey found. Falling back to username and password")
 		//ask username and password
-		username, password := readUsernamePassword()
+		username, password := interactif.ReadUsernamePassword()
 		c, e = connectVaultWithUsernamePassword(ctx, username, password)
 	}
 	if e != nil {
@@ -875,11 +799,3 @@ func main() {
 	menu(ctx, c, readMountPath())
 
 }
-
-//Configuration file format to be saved as config.json in the same directory as the binary
-// {
-// 	"VAULTURL": "https://xxx.xxx.xxx.xxx:8200"
-// 	"APPNAME": "myapp",
-// 	"CERTIFICATE": "web",
-// 	"MOUNTPATH": "kv"
-// }

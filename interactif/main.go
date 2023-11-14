@@ -80,3 +80,14 @@ func AskUser() map[string]string {
 	}
 	return fieldValues
 }
+
+// ask for username and password and return them
+func ReadUsernamePassword() (string, string) {
+	fmt.Print("Enter Username: ")
+	var username string
+	fmt.Scanln(&username)
+	fmt.Print("Enter Password: ")
+	var password string
+	fmt.Scanln(&password)
+	return username, password
+}
