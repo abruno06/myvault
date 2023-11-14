@@ -8,7 +8,7 @@ var SecretFieldNames = []string{"Username", "Credential", "URL", "LastUpdate", "
 var SecretHumanFieldNames = []string{"Username", "Credential", "URL", "Comment"}
 
 // select  smartcard type
-func selectSmartcard() string {
+func SelectSmartcard() string {
 	var smartcard string
 	fmt.Println("Select Smartcard (Default is Yubikey)")
 	fmt.Println("1. Yubikey")

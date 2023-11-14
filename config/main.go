@@ -35,7 +35,7 @@ func readConfigFile() *json.Decoder {
 }
 
 // read VAULTURL from environment variable, configuration file or use default
-func readVaultURL() string {
+func ReadVaultURL() string {
 	if os.Getenv("VAULTURL") != "" {
 		return os.Getenv("VAULTURL")
 	}
@@ -49,7 +49,7 @@ func readVaultURL() string {
 }
 
 // read APPNAME from environment variable, configuration file or use default
-func readAPPNAME() string {
+func ReadAPPNAME() string {
 	if os.Getenv("APPNAME") != "" {
 		return os.Getenv("APPNAME")
 	}
@@ -63,7 +63,7 @@ func readAPPNAME() string {
 }
 
 // read certificate name from environment variable, configuration file or use default
-func readCertificateName() string {
+func ReadCertificateName() string {
 	if os.Getenv("CERTIFICATE") != "" {
 		return os.Getenv("CERTIFICATE")
 	}
@@ -77,7 +77,7 @@ func readCertificateName() string {
 }
 
 // read mountpath from environment variable, configuration file or use default
-func readMountPath() string {
+func ReadMountPath() string {
 	if os.Getenv("MOUNTPATH") != "" {
 		return os.Getenv("MOUNTPATH")
 	}
