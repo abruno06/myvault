@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/abruno06/myvault/config"
@@ -219,50 +217,6 @@ func getSecret(ctx context.Context, client *vault.Client, secretID, mountpath st
 	return rValue, err
 }
 
-// this function list all secrets in vault for the given mountpath and readAPPNAME() and display them in tabuuar format
-func listSecrets(ctx context.Context, client *vault.Client, mountpath string) error {
-	//read the secret for the readAPPNAME()
-	list, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
-	if err != nil {
-		//log.Fatal(err)
-		log.Println("No secrets found")
-	}
-	//fmt.Printf("List: %v\n", list)
-	//display all secrets found in tabular format
-	// Create a tabwriter
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-
-	columns := SecretFieldNames
-	//create the format
-	format := "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
-	//print the header
-	fmt.Fprintf(w, format, "ID", columns[0], columns[1], columns[2], columns[3], columns[4], columns[5])
-	//print the data
-	//make data order in alphabetical order
-	Data := list.Data.Data
-	var keys []string
-	for key := range Data {
-		keys = append(keys, key)
-	}
-	// Sort the keys case-insensitively
-	sort.Slice(keys, func(i, j int) bool {
-		return strings.ToLower(keys[i]) < strings.ToLower(keys[j])
-	})
-
-	for _, k := range keys {
-		var ok bool
-		v := Data[k]
-		secret, ok := convertToSecret(v.(map[string]interface{}))
-		if ok {
-			fmt.Fprintf(w, format, k, secret.Username, secret.Credential, secret.URL, secret.LastUpdate.UTC().Format("2006-01-02 15:04:05"), secret.LastUpdateBy, secret.Comment)
-
-		}
-	}
-	w.Flush()
-	return err
-
-}
-
 func addSecret(ctx context.Context, client *vault.Client, mountpath, secretID string, secret Secret) error {
 	//read the secret id from the user
 
@@ -343,7 +297,9 @@ func deleteSecretInteractive(ctx context.Context, client *vault.Client, mountpat
 }
 
 // create a menu based cli with option to select the action
-func menu(ctx context.Context, client *vault.Client, mountpath string) {
+func menu(ctx context.Context, secstore securestore.SecretStore) {
+	client := secstore.Client
+	mountpath := secstore.Mountpath
 	for {
 		fmt.Println("Select Action")
 		fmt.Println("1. List Secrets")
@@ -360,20 +316,20 @@ func menu(ctx context.Context, client *vault.Client, mountpath string) {
 		switch actionNumber {
 		case 1:
 			fmt.Println("List Secrets")
-			listSecrets(ctx, client, mountpath)
+			securestore.ListSecrets(ctx, secstore)
 		case 2:
 			fmt.Println("Add Secret")
 			addSecretInteractive(ctx, client, mountpath)
-			listSecrets(ctx, client, mountpath)
+			securestore.ListSecrets(ctx, secstore)
 		case 3:
-			listSecrets(ctx, client, mountpath)
+			securestore.ListSecrets(ctx, secstore)
 			fmt.Println("Delete Secret")
 			deleteSecretInteractive(ctx, client, mountpath)
-			listSecrets(ctx, client, mountpath)
+			securestore.ListSecrets(ctx, secstore)
 		case 4:
 			fmt.Println("Update Secret")
 			updateSecretInteractive(ctx, client, mountpath)
-			listSecrets(ctx, client, mountpath)
+			securestore.ListSecrets(ctx, secstore)
 		case 5:
 			fmt.Println("Get Secret")
 			askSecret(ctx, client, mountpath)
@@ -383,7 +339,7 @@ func menu(ctx context.Context, client *vault.Client, mountpath string) {
 			var filename string
 			fmt.Scanln(&filename)
 			readCSV(ctx, client, mountpath, filename)
-			listSecrets(ctx, client, mountpath)
+			securestore.ListSecrets(ctx, secstore)
 		case 7:
 			fmt.Println("Exit")
 			return
@@ -503,7 +459,7 @@ func main() {
 	ctx := context.Background()
 	//print the default the app is running
 	fmt.Printf("myvault is running with APPNAME: %s and VAULTURL: %s\n", config.ReadAPPNAME(), config.ReadVaultURL())
-
+	var secstore securestore.SecretStore
 	var c *vault.Client
 	var e error
 	// check yubikey is plugged in
@@ -515,17 +471,19 @@ func main() {
 		//fmt.Printf("Certificate: %v\n", cert)
 		//fmt.Printf("Certificate: %v\n", cert.PublicKey)
 		fmt.Printf("Certificate: %v\n", cert.PublicKeyAlgorithm)
-		c, e = securestore.ConnectVaulwithYubikey(ctx, yk)
+		secstore, e = securestore.ConnectVaulwithYubikey(ctx, yk)
+		c = secstore.Client
 
 	} else {
 		fmt.Println("No Yubikey found. Falling back to username and password")
 		//ask username and password
 		username, password := interactif.ReadUsernamePassword()
-		c, e = securestore.ConnectVaultWithUsernamePassword(ctx, username, password)
+		secstore, e = securestore.ConnectVaultWithUsernamePassword(ctx, username, password)
+		c = secstore.Client
 	}
 	if e != nil {
 		log.Fatal(e)
 	}
-	menu(ctx, c, config.ReadMountPath())
+	menu(ctx, securestore.SecretStore{Client: c, Mountpath: config.ReadMountPath()})
 
 }

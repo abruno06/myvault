@@ -8,10 +8,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
+	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/abruno06/myvault/config"
 	"github.com/abruno06/myvault/interactif"
+	"github.com/abruno06/myvault/secret"
 	"github.com/abruno06/myvault/smartcard"
 	"github.com/go-piv/piv-go/piv"
 	"github.com/hashicorp/vault-client-go"
@@ -19,8 +23,14 @@ import (
 )
 
 type Secret struct {
-	Username string
+	Username     string
+	Credential   string
+	URL          string //optional
+	Comment      string
+	LastUpdate   time.Time
+	LastUpdateBy string
 }
+
 type SecretStore struct {
 	Client    *vault.Client
 	Mountpath string
@@ -54,7 +64,7 @@ func GetSecret(ctx context.Context, client *vault.Client, secretID, mountpath st
 }
 
 // connect to vault with specific tls config
-func ConnectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (*vault.Client, error) {
+func ConnectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (SecretStore, error) {
 	// prepare a client with the given base address
 
 	client, err := vault.New(
@@ -84,11 +94,11 @@ func ConnectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (*vau
 		log.Fatal(err)
 
 	}
-	return client, err
+	return SecretStore{Client: client, Mountpath: config.ReadMountPath()}, err
 }
 
 // connect to vault with yubikey
-func ConnectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey) (*vault.Client, error) {
+func ConnectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey) (SecretStore, error) {
 	//set the slot to authentication
 	slot := piv.SlotAuthentication // You can change this to the slot you are interested in.
 
@@ -144,7 +154,7 @@ func ConnectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey) (*vault.C
 }
 
 // connect to vault using username and password and return the client
-func ConnectVaultWithUsernamePassword(ctx context.Context, username, password string) (*vault.Client, error) {
+func ConnectVaultWithUsernamePassword(ctx context.Context, username, password string) (SecretStore, error) {
 	// Prepare Vault Connection
 
 	// prepare a client with the given base address
@@ -166,6 +176,80 @@ func ConnectVaultWithUsernamePassword(ctx context.Context, username, password st
 
 	}
 
-	return client, err
+	return SecretStore{Client: client, Mountpath: config.ReadMountPath()}, err
+
+}
+
+// this function will convert a map[string]interface{} to a Secret
+func convertToSecret(object map[string]interface{}) (Secret, bool) {
+	rValue := Secret{}
+	var ok bool
+	rValue.Username, ok = object["Username"].(string)
+	if !ok {
+		return rValue, ok
+	}
+	rValue.Credential, ok = object["Credential"].(string)
+	if !ok {
+		return rValue, ok
+	}
+	rValue.Comment, ok = object["Comment"].(string)
+	if !ok {
+		return rValue, ok
+	}
+	rValue.URL, ok = object["URL"].(string)
+	if !ok {
+		return rValue, ok
+	}
+	if object["LastUpdate"] == nil {
+		rValue.LastUpdate, _ = time.Parse("2006-01-02 15:04:05", "0001-01-01 00:00:00 ")
+	} else {
+		rValue.LastUpdate, _ = time.Parse("2006-01-02T15:04:05.999999-07:00", object["LastUpdate"].(string))
+	}
+	rValue.LastUpdateBy, _ = object["LastUpdateBy"].(string)
+	return rValue, ok
+}
+
+// this function list all secrets in vault for the given mountpath and readAPPNAME() and display them in tabuuar format
+func ListSecrets(ctx context.Context, secstore SecretStore) error {
+	//read the secret for the readAPPNAME()
+
+	list, err := secstore.Client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(secstore.Mountpath))
+	if err != nil {
+		//log.Fatal(err)
+		log.Println("No secrets found")
+	}
+	//fmt.Printf("List: %v\n", list)
+	//display all secrets found in tabular format
+	// Create a tabwriter
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+
+	columns := secret.SecretFieldNames
+	//create the format
+	format := "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
+	//print the header
+	fmt.Fprintf(w, format, "ID", columns[0], columns[1], columns[2], columns[3], columns[4], columns[5])
+	//print the data
+	//make data order in alphabetical order
+	Data := list.Data.Data
+	var keys []string
+	for key := range Data {
+		keys = append(keys, key)
+	}
+	// Sort the keys case-insensitively
+	sort.Slice(keys, func(i, j int) bool {
+		return strings.ToLower(keys[i]) < strings.ToLower(keys[j])
+	})
+
+	for _, k := range keys {
+		var ok bool
+		v := Data[k]
+		secret, ok := convertToSecret(v.(map[string]interface{}))
+		if ok {
+			fmt.Fprintf(w, format, k, secret.Username, secret.Credential, secret.URL, secret.LastUpdate.UTC().Format("2006-01-02 15:04:05"), secret.LastUpdateBy, secret.Comment)
+
+		}
+	}
+	w.Flush()
+	return err
 
 }
