@@ -1,4 +1,4 @@
-# MyVault
+# myvault
 
 ## description
 This little application is a prototype to interconnect Yukikey with Vault using piv mode of Yubikey.
