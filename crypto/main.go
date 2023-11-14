@@ -5,7 +5,9 @@ import (
 	"strings"
 )
 
-//build a password generator function that will generate a password based on the given length and complexity attributes
+const SpecialList = "!@#$%^&*()_+-"
+
+// build a password generator function that will generate a password based on the given length and complexity attributes
 // the password will be returned as string
 
 func randomPassword(lengh int, lowercase, uppercase, digit, special bool, specialList string) string {

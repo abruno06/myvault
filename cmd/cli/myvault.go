@@ -24,6 +24,8 @@ import (
 var VAULTURL = "https://172.0.0.1:8200"
 var APPNAME = "myapp"
 
+const AskSecretID = "Enter Secret ID: "
+
 // reset to this
 type Secret struct {
 	Username     string
@@ -304,7 +306,7 @@ func convertToSecret(object map[string]interface{}) (Secret, bool) {
 // this function will ask the user to enter the secret id and it will search it in vault and allow update it if the secret did not expire
 func updateSecretInteractive(ctx context.Context, client *vault.Client, mountpath string) error {
 	//read the secret id from the user
-	fmt.Print("Enter Secret ID: ")
+	fmt.Print(AskSecretID)
 	var secretID string
 	fmt.Scanln(&secretID)
 	//fmt.Printf("Secret ID: %s\n", secretID)
@@ -394,7 +396,7 @@ func askSecretParameter(Previous ...map[string]string) Secret {
 // this function take vault client will ask the user to enter a secret id and it will be searched in vault and returned it if the secret did not expire then return nil
 func askSecret(ctx context.Context, client *vault.Client, mountpath string) (Secret, error) {
 	//read the secret id from the user
-	fmt.Print("Enter Secret ID: ")
+	fmt.Print(AskSecretID)
 	var secretID string
 	fmt.Scanln(&secretID)
 	//fmt.Printf("Secret ID: %s\n", secretID)
@@ -519,7 +521,7 @@ func addSecretInteractive(ctx context.Context, client *vault.Client, mountpath s
 	//read the secret id from the user
 	var secretID string
 	for {
-		fmt.Print("Enter Secret ID: ")
+		fmt.Print(AskSecretID)
 		fmt.Scanln(&secretID)
 		//check if secretID already exist
 		if checkSecretID(ctx, client, mountpath, secretID) {
@@ -550,7 +552,7 @@ func addSecretInteractive(ctx context.Context, client *vault.Client, mountpath s
 // this function will ask the user an ID and it will delete it from vault
 func deleteSecretInteractive(ctx context.Context, client *vault.Client, mountpath string) error {
 	//read the secret id from the user
-	fmt.Print("Enter Secret ID: ")
+	fmt.Print(AskSecretID)
 	var secretID string
 	fmt.Scanln(&secretID)
 	//fmt.Printf("Secret ID: %s\n", secretID)
