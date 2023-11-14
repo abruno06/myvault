@@ -35,6 +35,17 @@ https://developer.hashicorp.com/vault/docs/what-is-vault
 If you do not have piv or equivalent this application fallback to username/password to get Vault access.
 Same if your pin is Invalid
 
+## Run the application
+
+```term
+go run cmd/cli/myvault.go
+```
+
+or compile it 
+
+```term
+go build cmd/cli/myvault.go
+```
 
 ## TODO
 
