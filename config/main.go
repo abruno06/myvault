@@ -9,6 +9,9 @@ import (
 var VAULTURL = "https://172.0.0.1:8200"
 var APPNAME = "myapp"
 
+var SecretFieldNames = []string{"Username", "Credential", "URL", "LastUpdate", "LastUpdateBy", "Comment"}
+var SecretHumanFieldNames = []string{"Username", "Credential", "URL", "Comment"}
+
 var User = func() string {
 	if os.Getenv("USER") != "" {
 		return os.Getenv("USER")
