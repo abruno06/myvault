@@ -18,6 +18,8 @@ import (
 	"github.com/abruno06/myvault/config"
 	"github.com/abruno06/myvault/crypto"
 	"github.com/abruno06/myvault/interactif"
+	"github.com/abruno06/myvault/secret"
+	"github.com/abruno06/myvault/smartcard"
 	"github.com/go-piv/piv-go/piv"
 	"github.com/hashicorp/vault-client-go"
 	"github.com/hashicorp/vault-client-go/schema"
@@ -38,66 +40,8 @@ type Secret struct {
 	LastUpdateBy string
 }
 
-var SecretFieldNames = []string{"Username", "Credential", "URL", "LastUpdate", "LastUpdateBy", "Comment"}
-var SecretHumanFieldNames = []string{"Username", "Credential", "URL", "Comment"}
-
-var User = func() string {
-	if os.Getenv("USER") != "" {
-		return os.Getenv("USER")
-	}
-	return "unknown"
-}()
-
-// select yubikey slot
-func selectSlot() piv.Slot {
-	var slot piv.Slot
-	fmt.Println("Select Yubikey Slot (Default is Authentication)")
-	fmt.Println("1. Authentication")
-	fmt.Println("2. Signature")
-	fmt.Println("3. Key Management")
-	fmt.Println("4. Card Authentication")
-	fmt.Print("Enter Slot Number: ")
-	var slotNumber int
-	fmt.Scanln(&slotNumber)
-	switch slotNumber {
-	case 1:
-		slot = piv.SlotAuthentication
-	case 2:
-		slot = piv.SlotSignature
-	case 3:
-		slot = piv.SlotKeyManagement
-	case 4:
-		slot = piv.SlotCardAuthentication
-	default:
-		slot = piv.SlotAuthentication
-	}
-	return slot
-}
-
-// open yubikey
-func openYubikey(smartcard string) *piv.YubiKey {
-	// List all smartcards connected to the system.
-	cards, err := piv.Cards()
-	if err != nil {
-		log.Fatal(err)
-	}
-	//fmt.Printf("List all cards %s\n", cards)
-	// Connect to the YubiKey (you can specify the reader name, or leave it empty to use the default reader).
-	// Find a YubiKey and open the reader.
-	var yubikey *piv.YubiKey
-	for _, card := range cards {
-		if strings.Contains(strings.ToLower(card), smartcard) {
-			if yubikey, err = piv.Open(card); err != nil {
-				log.Fatal(err)
-			}
-			break
-		}
-	}
-	if yubikey == nil {
-		log.Fatal("No YubiKey found")
-	}
-	return yubikey
-}
+var SecretFieldNames = secret.SecretFieldNames
+var SecretHumanFieldNames = secret.SecretHumanFieldNames
 
 // read yubikey certificate
 func readYubikeyCertificate(yubikey *piv.YubiKey, slot piv.Slot) *x509.Certificate {
@@ -111,15 +55,6 @@ func readYubikeyCertificate(yubikey *piv.YubiKey, slot piv.Slot) *x509.Certifica
 		log.Fatal(err)
 	}
 	return cert
-}
-
-// read user input for smartcard pin
-func readPin() string {
-	fmt.Print("Enter PIN: ")
-	var pin string
-	fmt.Scanln(&pin)
-	//	fmt.Printf("PIN: %s\n", pin)
-	return pin
 }
 
 //Vault piece
@@ -141,7 +76,7 @@ func connectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (*vau
 	transport := httpclient.Transport
 	transport.(*http.Transport).TLSClientConfig = tlsConfig
 	// Authenticate with the Vault server using ceritificate
-	resp, err := client.Auth.CertLogin(ctx, schema.CertLoginRequest{Name: readCertificateName()})
+	resp, err := client.Auth.CertLogin(ctx, schema.CertLoginRequest{Name: config.ReadCertificateName()})
 	if err != nil {
 		fmt.Printf("CertLogin error: %v\n", err)
 		log.Fatal(err)
@@ -167,7 +102,7 @@ func connectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey) (*vault.C
 	cert := readYubikeyCertificate(yubikey, slot)
 
 	//read the pin from the user
-	pin := readPin()
+	pin := interactif.ReadPin()
 	//test the pin is correct
 	if err := yubikey.VerifyPIN(pin); err != nil {
 		//fallback to username and password as pin is not correct
@@ -356,7 +291,7 @@ func askSecretParameter(Previous ...map[string]string) Secret {
 		URL:          fieldValues["URL"],
 		Comment:      fieldValues["Comment"],
 		LastUpdate:   time.Now(),
-		LastUpdateBy: User,
+		LastUpdateBy: config.User,
 	}
 	return rValue
 }
@@ -644,7 +579,7 @@ func csvToSecret(record []string) Secret {
 		URL:          record[3],
 		Comment:      record[4],
 		LastUpdate:   time.Now(),
-		LastUpdateBy: User,
+		LastUpdateBy: config.User,
 	}
 	return rValue
 }
@@ -737,34 +672,6 @@ func readAPPNAME() string {
 	return APPNAME
 }
 
-// read certificate name from environment variable, configuration file or use default
-func readCertificateName() string {
-	if os.Getenv("CERTIFICATE") != "" {
-		return os.Getenv("CERTIFICATE")
-	}
-	configfile := readConfigFile()
-	var config map[string]interface{}
-	configfile.Decode(&config)
-	if config["CERTIFICATE"] != nil {
-		return config["CERTIFICATE"].(string)
-	}
-	return "web"
-}
-
-// read mountpath from environment variable, configuration file or use default
-func readMountPath() string {
-	if os.Getenv("MOUNTPATH") != "" {
-		return os.Getenv("MOUNTPATH")
-	}
-	configfile := readConfigFile()
-	var config map[string]interface{}
-	configfile.Decode(&config)
-	if config["MOUNTPATH"] != nil {
-		return config["MOUNTPATH"].(string)
-	}
-	return "kv"
-}
-
 // main function
 func main() {
 	//read the configuration file
@@ -779,9 +686,9 @@ func main() {
 	// check yubikey is plugged in
 	if checkYubikey() {
 
-		yk := openYubikey(interactif.SelectSmartcard())
+		yk := smartcard.OpenYubikey(interactif.SelectSmartcard())
 		defer yk.Close()
-		cert := readYubikeyCertificate(yk, selectSlot())
+		cert := readYubikeyCertificate(yk, smartcard.SelectSlot())
 		//fmt.Printf("Certificate: %v\n", cert)
 		//fmt.Printf("Certificate: %v\n", cert.PublicKey)
 		fmt.Printf("Certificate: %v\n", cert.PublicKeyAlgorithm)
@@ -796,6 +703,6 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
-	menu(ctx, c, readMountPath())
+	menu(ctx, c, config.ReadMountPath())
 
 }

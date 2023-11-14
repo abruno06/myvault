@@ -81,6 +81,15 @@ func AskUser() map[string]string {
 	return fieldValues
 }
 
+// read user input for smartcard pin
+func ReadPin() string {
+	fmt.Print("Enter PIN: ")
+	var pin string
+	fmt.Scanln(&pin)
+	//	fmt.Printf("PIN: %s\n", pin)
+	return pin
+}
+
 // ask for username and password and return them
 func ReadUsernamePassword() (string, string) {
 	fmt.Print("Enter Username: ")
