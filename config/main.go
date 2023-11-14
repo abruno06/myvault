@@ -31,7 +31,7 @@ var User = func() string {
 func readConfigFile() *json.Decoder {
 	//read the configuration file
 	// Open the file
-	configfile, err := os.Open("../config.json")
+	configfile, err := os.Open("config.json")
 	if err != nil {
 		log.Fatal(err)
 	}

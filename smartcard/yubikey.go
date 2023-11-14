@@ -1,6 +1,7 @@
 package smartcard
 
 import (
+	"crypto/x509"
 	"log"
 	"strings"
 
@@ -30,4 +31,18 @@ func OpenYubikey(smartcard string) *piv.YubiKey {
 		log.Fatal("No YubiKey found")
 	}
 	return yubikey
+}
+
+// read yubikey certificate
+func ReadYubikeyCertificate(yubikey *piv.YubiKey, slot piv.Slot) *x509.Certificate {
+	// Select the PIV slot you want to read (e.g., Authentication, Signature, etc.).
+	//slot := piv.SlotAuthentication // You can change this to the slot you are interested in.
+
+	//read the personal certificate
+	cert, err := yubikey.Certificate(slot)
+	if err != nil {
+		log.Printf("readYubikeyCertificate: %v", err)
+		log.Fatal(err)
+	}
+	return cert
 }

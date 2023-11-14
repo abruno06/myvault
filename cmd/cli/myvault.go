@@ -2,13 +2,9 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -19,6 +15,7 @@ import (
 	"github.com/abruno06/myvault/crypto"
 	"github.com/abruno06/myvault/interactif"
 	"github.com/abruno06/myvault/secret"
+	"github.com/abruno06/myvault/securestore"
 	"github.com/abruno06/myvault/smartcard"
 	"github.com/go-piv/piv-go/piv"
 	"github.com/hashicorp/vault-client-go"
@@ -43,138 +40,7 @@ type Secret struct {
 var SecretFieldNames = secret.SecretFieldNames
 var SecretHumanFieldNames = secret.SecretHumanFieldNames
 
-// read yubikey certificate
-func readYubikeyCertificate(yubikey *piv.YubiKey, slot piv.Slot) *x509.Certificate {
-	// Select the PIV slot you want to read (e.g., Authentication, Signature, etc.).
-	//slot := piv.SlotAuthentication // You can change this to the slot you are interested in.
-
-	//read the personal certificate
-	cert, err := yubikey.Certificate(slot)
-	if err != nil {
-		log.Printf("readYubikeyCertificate: %v", err)
-		log.Fatal(err)
-	}
-	return cert
-}
-
 //Vault piece
-
-// connect to vault with specific tls config
-func connectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (*vault.Client, error) {
-	// prepare a client with the given base address
-
-	client, err := vault.New(
-		vault.WithAddress(readVaultURL()),
-		vault.WithRequestTimeout(30*time.Second),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//set the transport configuration
-	httpclient := client.Configuration().HTTPClient
-	transport := httpclient.Transport
-	transport.(*http.Transport).TLSClientConfig = tlsConfig
-	// Authenticate with the Vault server using ceritificate
-	resp, err := client.Auth.CertLogin(ctx, schema.CertLoginRequest{Name: config.ReadCertificateName()})
-	if err != nil {
-		fmt.Printf("CertLogin error: %v\n", err)
-		log.Fatal(err)
-	}
-	if err != nil {
-		log.Fatal(err)
-
-	}
-
-	if err := client.SetToken(resp.Auth.ClientToken); err != nil {
-		log.Fatal(err)
-
-	}
-	return client, err
-}
-
-// connect to vault with yubikey
-func connectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey) (*vault.Client, error) {
-	//set the slot to authentication
-	slot := piv.SlotAuthentication // You can change this to the slot you are interested in.
-
-	//read the personal certificate
-	cert := readYubikeyCertificate(yubikey, slot)
-
-	//read the pin from the user
-	pin := interactif.ReadPin()
-	//test the pin is correct
-	if err := yubikey.VerifyPIN(pin); err != nil {
-		//fallback to username and password as pin is not correct
-		//read the username and password from the user
-		fmt.Println("PIN is not correct, fallback to username and password")
-		username, password := interactif.ReadUsernamePassword()
-		return connectVaultWithUsernamePassword(ctx, username, password)
-	}
-
-	// set the auth
-	auth := piv.KeyAuth{PIN: pin}
-	//get the private key accessors
-	priv, err := yubikey.PrivateKey(slot, cert.PublicKey, auth)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Load the CA certificate of the server ("./cert/server.pem")
-	caCert, err := os.ReadFile("./cert/server.pem")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create a certificate pool with the CA certificate
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	// Create a TLS configuration with the client certificate and CA certificate
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{{
-			Certificate: [][]byte{cert.Raw},
-			PrivateKey:  priv,
-		}},
-		RootCAs:            caCertPool,
-		InsecureSkipVerify: true,
-	}
-	// the Yukibykey certificate and private retrieval is complete
-
-	// print tls config
-	//fmt.Printf("TLS Config: %v\n", tlsConfig)
-	// Prepare Vault Connection
-
-	//log client token returned
-	//log.Printf("Client Token: %v", resp.Auth.ClientToken)
-	return connectVaultWithTLSConfig(ctx, tlsConfig)
-}
-
-// connect to vault using username and password and return the client
-func connectVaultWithUsernamePassword(ctx context.Context, username, password string) (*vault.Client, error) {
-	// Prepare Vault Connection
-
-	// prepare a client with the given base address
-	client, err := vault.New(
-		vault.WithAddress(readVaultURL()),
-		vault.WithRequestTimeout(30*time.Second),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Authenticate with the Vault server using username and password
-	resp, err := client.Auth.UserpassLogin(ctx, username, schema.UserpassLoginRequest{Password: password})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := client.SetToken(resp.Auth.ClientToken); err != nil {
-		log.Fatal(err)
-
-	}
-
-	return client, err
-
-}
 
 // convert the map[string]interface {}  to Secret
 // return the secret and true if the conversion is successful otherwise return empty secret and false
@@ -214,7 +80,7 @@ func updateSecretInteractive(ctx context.Context, client *vault.Client, mountpat
 	fmt.Scanln(&secretID)
 	//fmt.Printf("Secret ID: %s\n", secretID)
 	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, readAPPNAME(), vault.WithMountPath(mountpath))
+	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -230,7 +96,7 @@ func updateSecretInteractive(ctx context.Context, client *vault.Client, mountpat
 	}
 
 	s.Data.Data[secretID] = askSecretParameter(fieldValues)
-	_, err = client.Secrets.KvV2Write(ctx, readAPPNAME(), schema.KvV2WriteRequest{
+	_, err = client.Secrets.KvV2Write(ctx, config.ReadAPPNAME(), schema.KvV2WriteRequest{
 		Data: s.Data.Data,
 	},
 		vault.WithMountPath(mountpath))
@@ -305,7 +171,7 @@ func askSecret(ctx context.Context, client *vault.Client, mountpath string) (Sec
 	//fmt.Printf("Secret ID: %s\n", secretID)
 	rValue := Secret{}
 	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, readAPPNAME(), vault.WithMountPath(mountpath))
+	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
 	if err == nil {
 		vValue := s.Data.Data
 		if vValue[secretID] != nil {
@@ -330,7 +196,7 @@ func askSecret(ctx context.Context, client *vault.Client, mountpath string) (Sec
 func getSecret(ctx context.Context, client *vault.Client, secretID, mountpath string) (Secret, error) {
 	rValue := Secret{}
 	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, readAPPNAME(), vault.WithMountPath(mountpath))
+	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
 	if err == nil {
 		vValue := s.Data.Data
 		if vValue[secretID] != nil {
@@ -356,7 +222,7 @@ func getSecret(ctx context.Context, client *vault.Client, secretID, mountpath st
 // this function list all secrets in vault for the given mountpath and readAPPNAME() and display them in tabuuar format
 func listSecrets(ctx context.Context, client *vault.Client, mountpath string) error {
 	//read the secret for the readAPPNAME()
-	list, err := client.Secrets.KvV2Read(ctx, readAPPNAME(), vault.WithMountPath(mountpath))
+	list, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
 	if err != nil {
 		//log.Fatal(err)
 		log.Println("No secrets found")
@@ -587,7 +453,7 @@ func csvToSecret(record []string) Secret {
 // check if SecretId already exist in vault
 func checkSecretID(ctx context.Context, client *vault.Client, mountpath, secretID string) bool {
 	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, readAPPNAME(), vault.WithMountPath(mountpath))
+	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -629,49 +495,6 @@ func readCSV(ctx context.Context, client *vault.Client, mountpath, filename stri
 
 }
 
-// read configuration file and return the configuration
-func readConfigFile() *json.Decoder {
-	//read the configuration file
-	// Open the file
-	configfile, err := os.Open("config.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Parse the json file
-	r := json.NewDecoder(configfile)
-
-	return r
-
-}
-
-// read VAULTURL from environment variable, configuration file or use default
-func readVaultURL() string {
-	if os.Getenv("VAULTURL") != "" {
-		return os.Getenv("VAULTURL")
-	}
-	configfile := readConfigFile()
-	var config map[string]interface{}
-	configfile.Decode(&config)
-	if config["VAULTURL"] != nil {
-		return config["VAULTURL"].(string)
-	}
-	return VAULTURL
-}
-
-// read APPNAME from environment variable, configuration file or use default
-func readAPPNAME() string {
-	if os.Getenv("APPNAME") != "" {
-		return os.Getenv("APPNAME")
-	}
-	configfile := readConfigFile()
-	var config map[string]interface{}
-	configfile.Decode(&config)
-	if config["APPNAME"] != nil {
-		return config["APPNAME"].(string)
-	}
-	return APPNAME
-}
-
 // main function
 func main() {
 	//read the configuration file
@@ -679,7 +502,7 @@ func main() {
 	//prepare the context
 	ctx := context.Background()
 	//print the default the app is running
-	fmt.Printf("myvault is running with APPNAME: %s and VAULTURL: %s\n", readAPPNAME(), readVaultURL())
+	fmt.Printf("myvault is running with APPNAME: %s and VAULTURL: %s\n", config.ReadAPPNAME(), config.ReadVaultURL())
 
 	var c *vault.Client
 	var e error
@@ -688,17 +511,17 @@ func main() {
 
 		yk := smartcard.OpenYubikey(interactif.SelectSmartcard())
 		defer yk.Close()
-		cert := readYubikeyCertificate(yk, smartcard.SelectSlot())
+		cert := smartcard.ReadYubikeyCertificate(yk, smartcard.SelectSlot())
 		//fmt.Printf("Certificate: %v\n", cert)
 		//fmt.Printf("Certificate: %v\n", cert.PublicKey)
 		fmt.Printf("Certificate: %v\n", cert.PublicKeyAlgorithm)
-		c, e = connectVaulwithYubikey(ctx, yk)
+		c, e = securestore.ConnectVaulwithYubikey(ctx, yk)
 
 	} else {
 		fmt.Println("No Yubikey found. Falling back to username and password")
 		//ask username and password
 		username, password := interactif.ReadUsernamePassword()
-		c, e = connectVaultWithUsernamePassword(ctx, username, password)
+		c, e = securestore.ConnectVaultWithUsernamePassword(ctx, username, password)
 	}
 	if e != nil {
 		log.Fatal(e)
