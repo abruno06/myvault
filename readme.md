@@ -47,6 +47,13 @@ or compile it
 go build cmd/cli/myvault.go
 ```
 
+## Batch Load
+
+you can use a CSV File to load your data:
+the format is the following:
+SecretID, Username, Credential, Comment
+no header are expected on the CSV file
+
 ## TODO
 
 Split in several files

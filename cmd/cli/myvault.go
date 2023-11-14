@@ -339,6 +339,7 @@ func updateSecretInteractive(ctx context.Context, client *vault.Client, mountpat
 func askSecretParameter(Previous ...map[string]string) Secret {
 	//read the secret from the user
 	fieldValues := make(map[string]string)
+	//Check if Previous is passed
 	if len(Previous) > 0 {
 		for key, field := range Previous[0] {
 			var value string
