@@ -46,3 +46,14 @@ func ReadYubikeyCertificate(yubikey *piv.YubiKey, slot piv.Slot) *x509.Certifica
 	}
 	return cert
 }
+
+func CheckYubikey() bool {
+	yubikey, err := piv.Cards()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if len(yubikey) == 0 {
+		return false
+	}
+	return true
+}

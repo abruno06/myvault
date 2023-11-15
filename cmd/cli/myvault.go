@@ -15,9 +15,7 @@ import (
 	"github.com/abruno06/myvault/secret"
 	"github.com/abruno06/myvault/securestore"
 	"github.com/abruno06/myvault/smartcard"
-	"github.com/go-piv/piv-go/piv"
 	"github.com/hashicorp/vault-client-go"
-	"github.com/hashicorp/vault-client-go/schema"
 )
 
 var VAULTURL = "https://172.0.0.1:8200"
@@ -68,40 +66,6 @@ func convertToSecret(object map[string]interface{}) (Secret, bool) {
 	}
 	rValue.LastUpdateBy, _ = object["LastUpdateBy"].(string)
 	return rValue, ok
-}
-
-// this function will ask the user to enter the secret id and it will search it in vault and allow update it if the secret did not expire
-func updateSecretInteractive(ctx context.Context, client *vault.Client, mountpath string) error {
-	//read the secret id from the user
-	fmt.Print(AskSecretID)
-	var secretID string
-	fmt.Scanln(&secretID)
-	//fmt.Printf("Secret ID: %s\n", secretID)
-	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	//read the secret from the user
-	fieldNames := SecretHumanFieldNames
-	fieldValues := make(map[string]string)
-	for _, fieldName := range fieldNames {
-		if fieldValue, ok := s.Data.Data[secretID].(map[string]interface{})[fieldName]; ok {
-			fieldValues[fieldName] = fieldValue.(string)
-		} else {
-			fieldValues[fieldName] = "" // Default to empty string if the field is not present
-		}
-	}
-
-	s.Data.Data[secretID] = askSecretParameter(fieldValues)
-	_, err = client.Secrets.KvV2Write(ctx, config.ReadAPPNAME(), schema.KvV2WriteRequest{
-		Data: s.Data.Data,
-	},
-		vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return err
 }
 
 // function will ask for secret parameter and return as  Secret struct
@@ -191,110 +155,8 @@ func askSecret(ctx context.Context, client *vault.Client, mountpath string) (Sec
 	//fmt.Printf("Secret: %v\n", s.Data)
 	return rValue, err
 }
-func getSecret(ctx context.Context, client *vault.Client, secretID, mountpath string) (Secret, error) {
-	rValue := Secret{}
-	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
-	if err == nil {
-		vValue := s.Data.Data
-		if vValue[secretID] != nil {
-			var ok bool
-			rValue, ok = convertToSecret(vValue[secretID].(map[string]interface{}))
-			if !ok {
-				log.Printf("Secret ID: %s not valid secret\n", vValue[secretID])
-				log.Printf("Secret ID: is type %T \n", vValue[secretID])
-				rValue = Secret{}
-				err = fmt.Errorf("Secret ID: %s not valid secret", vValue[secretID])
-			}
-			//fmt.Printf("Secret: %v\n", rValue)
-		} else {
-			fmt.Printf("Secret ID: %s not found\n", secretID)
-			rValue = Secret{}
-		}
-	}
-
-	//fmt.Printf("Secret: %v\n", s.Data)
-	return rValue, err
-}
-
-func addSecret(ctx context.Context, client *vault.Client, mountpath, secretID string, secret Secret) error {
-	//read the secret id from the user
-
-	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	//ask the Secret detail
-	s.Data.Data[secretID] = secret
-
-	_, err = client.Secrets.KvV2Write(ctx, config.ReadAPPNAME(), schema.KvV2WriteRequest{
-		Data: s.Data.Data,
-	},
-		vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return err
-}
-
-// this function will ask the user an ID and a secret and it will be stored in vault
-func addSecretInteractive(ctx context.Context, client *vault.Client, mountpath string) error {
-	//read the secret id from the user
-	var secretID string
-	for {
-		fmt.Print(AskSecretID)
-		fmt.Scanln(&secretID)
-		//check if secretID already exist
-		if checkSecretID(ctx, client, mountpath, secretID) {
-			fmt.Printf("Secret ID: %s already exist\n", secretID)
-		} else {
-			break
-		}
-	}
-	//fmt.Printf("Secret ID: %s\n", secretID)
-	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	//ask the Secret detail
-	s.Data.Data[secretID] = askSecretParameter()
-
-	_, err = client.Secrets.KvV2Write(ctx, config.ReadAPPNAME(), schema.KvV2WriteRequest{
-		Data: s.Data.Data,
-	},
-		vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return err
-}
 
 // this function will ask the user an ID and it will delete it from vault
-func deleteSecretInteractive(ctx context.Context, client *vault.Client, mountpath string) error {
-	//read the secret id from the user
-	fmt.Print(AskSecretID)
-	var secretID string
-	fmt.Scanln(&secretID)
-	//fmt.Printf("Secret ID: %s\n", secretID)
-	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	//fmt.Printf("Secret: %v\n", s.Data)
-	//delete the secret
-	delete(s.Data.Data, secretID)
-	_, err = client.Secrets.KvV2Write(ctx, config.ReadAPPNAME(), schema.KvV2WriteRequest{
-		Data: s.Data.Data,
-	},
-		vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return err
-}
 
 // create a menu based cli with option to select the action
 func menu(ctx context.Context, secstore securestore.SecretStore) {
@@ -319,16 +181,16 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 			securestore.ListSecrets(ctx, secstore)
 		case 2:
 			fmt.Println("Add Secret")
-			addSecretInteractive(ctx, client, mountpath)
+			interactif.AddSecretInteractive(ctx, secstore)
 			securestore.ListSecrets(ctx, secstore)
 		case 3:
 			securestore.ListSecrets(ctx, secstore)
 			fmt.Println("Delete Secret")
-			deleteSecretInteractive(ctx, client, mountpath)
+			interactif.DeleteSecretInteractive(ctx, secstore)
 			securestore.ListSecrets(ctx, secstore)
 		case 4:
 			fmt.Println("Update Secret")
-			updateSecretInteractive(ctx, client, mountpath)
+			interactif.UpdateSecretInteractive(ctx, secstore)
 			securestore.ListSecrets(ctx, secstore)
 		case 5:
 			fmt.Println("Get Secret")
@@ -338,7 +200,7 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 			fmt.Print("Enter CSV Filename: ")
 			var filename string
 			fmt.Scanln(&filename)
-			readCSV(ctx, client, mountpath, filename)
+			readCSV(ctx, secstore, filename)
 			securestore.ListSecrets(ctx, secstore)
 		case 7:
 			fmt.Println("Exit")
@@ -382,20 +244,9 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 
 //check if yubikey is plugged in and return bool
 
-func checkYubikey() bool {
-	yubikey, err := piv.Cards()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if len(yubikey) == 0 {
-		return false
-	}
-	return true
-}
-
 // CSV record to Secret
-func csvToSecret(record []string) Secret {
-	rValue := Secret{
+func csvToSecret(record []string) secret.Secret {
+	rValue := secret.Secret{
 		Username:     record[1],
 		Credential:   record[2],
 		URL:          record[3],
@@ -406,22 +257,8 @@ func csvToSecret(record []string) Secret {
 	return rValue
 }
 
-// check if SecretId already exist in vault
-func checkSecretID(ctx context.Context, client *vault.Client, mountpath, secretID string) bool {
-	//read the secret for the readAPPNAME()
-	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-	//delete the secret
-	if s.Data.Data[secretID] != nil {
-		return true
-	}
-	return false
-}
-
 // readCSV file and insert the data in vault as Secret
-func readCSV(ctx context.Context, client *vault.Client, mountpath, filename string) {
+func readCSV(ctx context.Context, secstore securestore.SecretStore, filename string) {
 	//read the csv file
 	// Open the file
 	csvfile, err := os.Open(filename)
@@ -445,7 +282,7 @@ func readCSV(ctx context.Context, client *vault.Client, mountpath, filename stri
 		}
 		fmt.Printf("Record: %v\n", record)
 		//ask the Secret detail
-		addSecret(ctx, client, mountpath, record[0], csvToSecret(record))
+		securestore.AddSecret(ctx, secstore, csvToSecret(record), record[0])
 
 	}
 
@@ -460,10 +297,9 @@ func main() {
 	//print the default the app is running
 	fmt.Printf("myvault is running with APPNAME: %s and VAULTURL: %s\n", config.ReadAPPNAME(), config.ReadVaultURL())
 	var secstore securestore.SecretStore
-	var c *vault.Client
 	var e error
 	// check yubikey is plugged in
-	if checkYubikey() {
+	if smartcard.CheckYubikey() {
 
 		yk := smartcard.OpenYubikey(interactif.SelectSmartcard())
 		defer yk.Close()
@@ -471,19 +307,24 @@ func main() {
 		//fmt.Printf("Certificate: %v\n", cert)
 		//fmt.Printf("Certificate: %v\n", cert.PublicKey)
 		fmt.Printf("Certificate: %v\n", cert.PublicKeyAlgorithm)
-		secstore, e = securestore.ConnectVaulwithYubikey(ctx, yk)
-		c = secstore.Client
-
+		//ask user pin
+		pin := interactif.ReadPin()
+		secstore, e = securestore.ConnectVaulwithYubikey(ctx, yk, pin)
+		if e != nil {
+			fmt.Println("Bad Pin. Falling back to username and password")
+			username, password := interactif.ReadUsernamePassword()
+			secstore, e = securestore.ConnectVaultWithUsernamePassword(ctx, username, password)
+		}
 	} else {
 		fmt.Println("No Yubikey found. Falling back to username and password")
 		//ask username and password
 		username, password := interactif.ReadUsernamePassword()
 		secstore, e = securestore.ConnectVaultWithUsernamePassword(ctx, username, password)
-		c = secstore.Client
+
 	}
 	if e != nil {
 		log.Fatal(e)
 	}
-	menu(ctx, securestore.SecretStore{Client: c, Mountpath: config.ReadMountPath()})
+	menu(ctx, secstore)
 
 }
