@@ -7,12 +7,12 @@ import (
 
 // reset to this
 type Secret struct {
-	Username     string
-	Credential   string
-	URL          string //optional
-	Comment      string
-	LastUpdate   time.Time
-	LastUpdateBy string
+	Username     string    `json:"username"`
+	Credential   string    `json:"credential"`
+	URL          string    `json:"url"` //optional
+	Comment      string    `json:"comment"`
+	LastUpdate   time.Time `json:"lastupdate"`
+	LastUpdateBy string    `json:"lastupdateby"`
 }
 
 var SecretFieldNames = []string{"Username", "Credential", "URL", "LastUpdate", "LastUpdateBy", "Comment"}

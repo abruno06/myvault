@@ -2,6 +2,7 @@ package securestore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -99,7 +100,7 @@ func setCubbyhole(ctx context.Context, secstore SecretStore, secretId string, s 
 	//extract the mountpath from the SecretStore
 	mountpath := secstore.Mountpath
 	data := secret.ConvertFromSecret(s)
-	fmt.Printf("data: %v\n", data)
+	//fmt.Printf("data: %v\n", data)
 	_, err := client.Secrets.CubbyholeWrite(ctx, secretId, data, vault.WithMountPath(mountpath))
 	if err != nil {
 		log.Fatal(err)
@@ -118,7 +119,7 @@ func WrapCubbyhole(ctx context.Context, secstore SecretStore, secretID string, t
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Wrappe response: %v\n", resp.WrapInfo)
+	//fmt.Printf("Wrapped response: %v\n", resp.WrapInfo)
 	return resp.WrapInfo.Token, err
 }
 
@@ -152,6 +153,7 @@ func WrapSecret(ctx context.Context, secstore SecretStore, secretID string, ttl 
 	return WrapCubbyhole(ctx, secstore, secretID, ttl)
 }
 
+// this function will unwrap a cubbyhole and return the secret
 func UnWrappeSecret(ctx context.Context, secstore SecretStore, token string) (secret.Secret, error) {
 	//extract the client from the SecretStore
 	client := secstore.Client
@@ -165,4 +167,12 @@ func UnWrappeSecret(ctx context.Context, secstore SecretStore, token string) (se
 	//convert to secret
 	sec, _ := secret.ConvertToSecret(resp.Data)
 	return sec, err
+}
+
+// this function will unwrap a secret and return a json string
+func UnWrappeSecretJSON(ctx context.Context, secstore SecretStore, token string) (string, error) {
+	//extract the client from the SecretStore
+	data, _ := UnWrappeSecret(ctx, secstore, token)
+	jsonData, err := json.Marshal(data)
+	return string(jsonData), err
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/abruno06/myvault/config"
 	"github.com/abruno06/myvault/securestore"
 )
 
@@ -13,7 +12,7 @@ func main() {
 	ctx := context.Background()
 	//retreive the token from the Arg[1]
 	token := os.Args[1]
-	fmt.Printf("myvault is running with APPNAME: %s and VAULTURL: %s\n", config.ReadAPPNAME(), config.ReadVaultURL())
+	//fmt.Printf("myvault is running with APPNAME: %s and VAULTURL: %s\n", config.ReadAPPNAME(), config.ReadVaultURL())
 	var secstore securestore.SecretStore
 	var e error
 	//connect to vault
@@ -27,12 +26,12 @@ func main() {
 	}
 	//fmt.Printf("Secret: %v\n", r)
 	//retreive the unWrapped token from input token
-	uWrapp, err := securestore.UnWrappeSecret(ctx, secstore, token)
+	uWrapp, err := securestore.UnWrappeSecretJSON(ctx, secstore, token)
 	if err != nil {
 		fmt.Printf("Error UnWrapping token: %v\n", err)
 		os.Exit(1)
 	}
 	//display the Secret
-	fmt.Printf("UnWrapped Token:\n%s\n", uWrapp)
+	fmt.Printf("%s\n", uWrapp)
 
 }
