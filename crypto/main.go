@@ -7,9 +7,34 @@ import (
 
 const SpecialList = "!@#$%^&*()_+-"
 
+// validate if the password is meeting the complexity requirements
+func Checkpassword(password string, lowercase, uppercase, digit, special bool, specialList string) bool {
+	//check if the password is meeting the complexity requirements
+	if lowercase {
+		if !strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz") {
+			return false
+		}
+	}
+	if uppercase {
+		if !strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+			return false
+		}
+	}
+	if digit {
+		if !strings.ContainsAny(password, "0123456789") {
+			return false
+		}
+	}
+	if special {
+		if !strings.ContainsAny(password, specialList) {
+			return false
+		}
+	}
+	return true
+}
+
 // build a password generator function that will generate a password based on the given length and complexity attributes
 // the password will be returned as string
-
 func RandomPassword(lengh int, lowercase, uppercase, digit, special bool, specialList string) string {
 
 	if lengh < 0 {
@@ -45,31 +70,12 @@ func RandomPassword(lengh int, lowercase, uppercase, digit, special bool, specia
 			rValue = rValue + string(charList[rand.Intn(len(charList))])
 		}
 		//check constraints
-		if lowercase {
-			if !strings.ContainsAny(rValue, "abcdefghijklmnopqrstuvwxyz") {
-				rValue = ""
-				continue
-			}
+		if Checkpassword(rValue, lowercase, uppercase, digit, special, specialList) {
+			break
+		} else {
+			rValue = ""
+			continue
 		}
-		if uppercase {
-			if !strings.ContainsAny(rValue, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
-				rValue = ""
-				continue
-			}
-		}
-		if digit {
-			if !strings.ContainsAny(rValue, "0123456789") {
-				rValue = ""
-				continue
-			}
-		}
-		if special {
-			if !strings.ContainsAny(rValue, specialList) {
-				rValue = ""
-				continue
-			}
-		}
-		break
 	}
 	return rValue
 
