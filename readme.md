@@ -54,6 +54,10 @@ the format is the following:
 SecretID, Username, Credential, Comment
 no header are expected on the CSV file
 
+## Packages
+
+The application has been splited to allow flexibility for future
+
 ## TODO
 
-Split in several files
+Improve the Secret 
