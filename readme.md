@@ -51,9 +51,11 @@ go build cmd/cli/myvault.go
 
 you can use a CSV File to load your data:
 the format is the following:
-SecretID, Username, Credential, Comment
-no header are expected on the CSV file
 
+```SecretID, Username, Credential, URL, Comment```
+
+no header are expected on the CSV file
+remark: do not put ',' in the comment piece if you do not want unexpected result
 ## Packages
 
 The application has been splited to allow flexibility for future
