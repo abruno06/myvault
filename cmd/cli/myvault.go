@@ -162,6 +162,7 @@ func askSecret(ctx context.Context, client *vault.Client, mountpath string) (Sec
 func menu(ctx context.Context, secstore securestore.SecretStore) {
 	client := secstore.Client
 	mountpath := secstore.Mountpath
+	//display the current token
 	for {
 		fmt.Println("Select Action")
 		fmt.Println("1. List Secrets")
@@ -170,8 +171,9 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 		fmt.Println("4. Update Secret")
 		fmt.Println("5. Get Secret")
 		fmt.Println("6. Read CSV File")
-		fmt.Println("7. Exit")
-		fmt.Println("8. Random Password")
+		fmt.Println("7. Random Password")
+		fmt.Println("8. Generate bootstrap token")
+		fmt.Println("9. Exit")
 		fmt.Print("Enter Action Number: ")
 		var actionNumber int
 		fmt.Scanln(&actionNumber)
@@ -203,9 +205,6 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 			readCSV(ctx, secstore, filename)
 			securestore.ListSecrets(ctx, secstore)
 		case 7:
-			fmt.Println("Exit")
-			return
-		case 8:
 			//return random password
 			fmt.Println("Random Password")
 			fmt.Print("Enter Password Length: ")
@@ -233,7 +232,28 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 				fmt.Printf("Special Characters: %s\n", special)
 			}
 			fmt.Printf("Password: %s\n", crypto.RandomPassword(length, strings.Contains(complexity, "l"), strings.Contains(complexity, "u"), strings.Contains(complexity, "d"), strings.Contains(complexity, "s"), special))
-
+		case 8:
+			fmt.Println("Generate bootstrap token")
+			fmt.Print("Enter Token TTL (in minutes): ")
+			var ttl int
+			fmt.Scanln(&ttl)
+			//if empty use default
+			if ttl == 0 {
+				ttl = 24
+				fmt.Printf("Token TTL: %d\n", ttl)
+			}
+			//select the SecretId
+			fmt.Print("Enter Secret ID: ")
+			var secretID string
+			fmt.Scanln(&secretID)
+			wToken, err := securestore.WrapSecret(ctx, secstore, secretID, time.Duration(ttl)*time.Minute)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Bootstrap Token: %s\n", wToken)
+		case 9:
+			fmt.Println("Exit")
+			return
 		default:
 			fmt.Println("Exit")
 			return

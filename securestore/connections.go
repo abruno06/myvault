@@ -49,6 +49,7 @@ func ConnectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (Secr
 		log.Fatal(err)
 
 	}
+	fmt.Printf("Client Token: %v\n", resp.Auth.ClientToken)
 	return SecretStore{Client: client, Mountpath: config.ReadMountPath(), Appname: config.ReadAPPNAME()}, err
 }
 
@@ -123,6 +124,45 @@ func ConnectVaultWithUsernamePassword(ctx context.Context, username, password st
 	if err := client.SetToken(resp.Auth.ClientToken); err != nil {
 		log.Fatal(err)
 
+	}
+
+	return SecretStore{Client: client, Mountpath: config.ReadMountPath(), Appname: config.ReadAPPNAME()}, err
+
+}
+
+// connect to vault using token
+func ConnectVaultWithToken(ctx context.Context, token string) (SecretStore, error) {
+	// Prepare Vault Connection
+
+	// prepare a client with the given base address
+	client, err := vault.New(
+		vault.WithAddress(config.ReadVaultURL()),
+		vault.WithRequestTimeout(30*time.Second),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := client.SetToken(token); err != nil {
+		log.Fatal(err)
+
+	}
+
+	return SecretStore{Client: client, Mountpath: config.ReadMountPath(), Appname: config.ReadAPPNAME()}, err
+
+}
+
+// connect to vault in annonymous mode
+func ConnectVault(ctx context.Context) (SecretStore, error) {
+	// Prepare Vault Connection
+
+	// prepare a client with the given base address
+	client, err := vault.New(
+		vault.WithAddress(config.ReadVaultURL()),
+		vault.WithRequestTimeout(30*time.Second),
+	)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	return SecretStore{Client: client, Mountpath: config.ReadMountPath(), Appname: config.ReadAPPNAME()}, err

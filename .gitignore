@@ -2,3 +2,4 @@ config.json
 cert/server.pem
 myvault copy.origo
 myvault
+securestore/main.go

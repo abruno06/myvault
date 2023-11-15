@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/abruno06/myvault/secret"
 
@@ -65,7 +66,7 @@ func getAllSecrets(ctx context.Context, secstore SecretStore) (map[string]interf
 	return s.Data.Data, err
 }
 
-// this function will add a secret to vault for a given mountpath, APPNAME and secretID
+// this function will add a secret to vault for a given SecretStore, secret and secretID
 func setSecret(ctx context.Context, secstore SecretStore, secretID string, secret secret.Secret) error {
 	//extract the client from the SecretStore
 	client := secstore.Client
@@ -89,4 +90,79 @@ func setSecret(ctx context.Context, secstore SecretStore, secretID string, secre
 		log.Fatal(err)
 	}
 	return err
+}
+
+// this function will set a cubbyhole for the given secretID
+func setCubbyhole(ctx context.Context, secstore SecretStore, secretId string, s secret.Secret) error {
+	//extract the client from the SecretStore
+	client := secstore.Client
+	//extract the mountpath from the SecretStore
+	mountpath := secstore.Mountpath
+	data := secret.ConvertFromSecret(s)
+	fmt.Printf("data: %v\n", data)
+	_, err := client.Secrets.CubbyholeWrite(ctx, secretId, data, vault.WithMountPath(mountpath))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return err
+}
+
+// take a cubbyhole and wrap the secret and return the wrapped token
+func WrapCubbyhole(ctx context.Context, secstore SecretStore, secretID string, ttl time.Duration) (string, error) {
+	//extract the client from the SecretStore
+	client := secstore.Client
+	//extract the mountpath from the SecretStore
+	mountpath := secstore.Mountpath
+	//read the cubbyhole
+	resp, err := client.Secrets.CubbyholeRead(ctx, secretID, vault.WithMountPath(mountpath), vault.WithResponseWrapping(ttl))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Wrappe response: %v\n", resp.WrapInfo)
+	return resp.WrapInfo.Token, err
+}
+
+// create a wrap secret for a given appname and return the token
+func WrapSecret(ctx context.Context, secstore SecretStore, secretID string, ttl time.Duration) (string, error) {
+	//extract the client from the SecretStore
+	client := secstore.Client
+	//extract the mountpath from the SecretStore
+	mountpath := secstore.Mountpath
+	//extract the appname from the SecretStore
+	appname := secstore.Appname
+	//read the secret for the readAPPNAME()
+	s, err := client.Secrets.KvV2Read(ctx, appname, vault.WithMountPath(mountpath))
+	if err != nil {
+		log.Fatal(err)
+	}
+	//check if secretID exist
+	if s.Data.Data[secretID] == nil {
+		log.Fatalf("Secret ID: %s not found\n", secretID)
+		return "", fmt.Errorf("Secret ID: %s not found\n", secretID)
+	}
+	//convert to secret
+	sec, _ := secret.ConvertToSecret(s.Data.Data[secretID].(map[string]interface{}))
+	//put the secret into the cubbyhole
+	err = setCubbyhole(ctx, secstore, secretID, sec)
+	if err != nil {
+		log.Fatal(err)
+
+	}
+	//return the Wrappe Token
+	return WrapCubbyhole(ctx, secstore, secretID, ttl)
+}
+
+func UnWrappeSecret(ctx context.Context, secstore SecretStore, token string) (secret.Secret, error) {
+	//extract the client from the SecretStore
+	client := secstore.Client
+
+	//read the cubbyhole
+	resp, err := vault.Unwrap[map[string]interface{}](ctx, client, token)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//	fmt.Printf("Unwrapped response: %v\n", resp)
+	//convert to secret
+	sec, _ := secret.ConvertToSecret(resp.Data)
+	return sec, err
 }
