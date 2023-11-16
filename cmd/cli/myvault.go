@@ -15,6 +15,7 @@ import (
 	"github.com/abruno06/myvault/secret"
 	"github.com/abruno06/myvault/securestore"
 	"github.com/abruno06/myvault/smartcard"
+	"github.com/google/uuid"
 	"github.com/hashicorp/vault-client-go"
 )
 
@@ -37,36 +38,6 @@ var SecretFieldNames = secret.SecretFieldNames
 var SecretHumanFieldNames = secret.SecretHumanFieldNames
 
 //Vault piece
-
-// convert the map[string]interface {}  to Secret
-// return the secret and true if the conversion is successful otherwise return empty secret and false
-func convertToSecret(object map[string]interface{}) (Secret, bool) {
-	rValue := Secret{}
-	var ok bool
-	rValue.Username, ok = object["Username"].(string)
-	if !ok {
-		return rValue, ok
-	}
-	rValue.Credential, ok = object["Credential"].(string)
-	if !ok {
-		return rValue, ok
-	}
-	rValue.Comment, ok = object["Comment"].(string)
-	if !ok {
-		return rValue, ok
-	}
-	rValue.URL, ok = object["URL"].(string)
-	if !ok {
-		return rValue, ok
-	}
-	if object["LastUpdate"] == nil {
-		rValue.LastUpdate, _ = time.Parse("2006-01-02 15:04:05", "0001-01-01 00:00:00 ")
-	} else {
-		rValue.LastUpdate, _ = time.Parse("2006-01-02T15:04:05.999999-07:00", object["LastUpdate"].(string))
-	}
-	rValue.LastUpdateBy, _ = object["LastUpdateBy"].(string)
-	return rValue, ok
-}
 
 // function will ask for secret parameter and return as  Secret struct
 func askSecretParameter(Previous ...map[string]string) Secret {
@@ -125,30 +96,30 @@ func askSecretParameter(Previous ...map[string]string) Secret {
 }
 
 // this function take vault client will ask the user to enter a secret id and it will be searched in vault and returned it if the secret did not expire then return nil
-func askSecret(ctx context.Context, client *vault.Client, mountpath string) (Secret, error) {
+func askSecret(ctx context.Context, client *vault.Client, mountpath string) (secret.Secret, error) {
 	//read the secret id from the user
 	fmt.Print(AskSecretID)
 	var secretID string
 	fmt.Scanln(&secretID)
 	//fmt.Printf("Secret ID: %s\n", secretID)
-	rValue := Secret{}
+	rValue := secret.Secret{}
 	//read the secret for the readAPPNAME()
 	s, err := client.Secrets.KvV2Read(ctx, config.ReadAPPNAME(), vault.WithMountPath(mountpath))
 	if err == nil {
 		vValue := s.Data.Data
 		if vValue[secretID] != nil {
 			var ok bool
-			rValue, ok = convertToSecret(vValue[secretID].(map[string]interface{}))
+			rValue, ok = secret.ConvertToSecret(vValue[secretID].(map[string]interface{}))
 			if !ok {
 				log.Printf("Secret ID: %s not valid secret\n", vValue[secretID])
 				log.Printf("Secret ID: is type %T \n", vValue[secretID])
-				rValue = Secret{}
+				rValue = secret.Secret{}
 				err = fmt.Errorf("Secret ID: %s not valid secret", vValue[secretID])
 			}
 			//fmt.Printf("Secret: %v\n", rValue)
 		} else {
 			fmt.Printf("Secret ID: %s not found\n", secretID)
-			rValue = Secret{}
+			rValue = secret.Secret{}
 		}
 	}
 
@@ -173,7 +144,8 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 		fmt.Println("6. Read CSV File")
 		fmt.Println("7. Random Password")
 		fmt.Println("8. Generate bootstrap token")
-		fmt.Println("9. Exit")
+		fmt.Println("9. Generate bootstrap token (list)")
+		fmt.Println("10. Exit")
 		fmt.Print("Enter Action Number: ")
 		var actionNumber int
 		fmt.Scanln(&actionNumber)
@@ -252,6 +224,27 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 			}
 			fmt.Printf("Bootstrap Token: %s\n", wToken)
 		case 9:
+			fmt.Println("Generate bootstrap token")
+			fmt.Print("Enter Token TTL (in minutes): ")
+			var ttl int
+			fmt.Scanln(&ttl)
+			//if empty use default
+			if ttl == 0 {
+				ttl = 24
+				fmt.Printf("Token TTL: %d\n", ttl)
+			}
+			//select the SecretId
+			fmt.Print("Enter Secret ID CSV list: ")
+			var secretID string
+			fmt.Scanln(&secretID)
+			//generate uuid string
+			uuid := uuid.New().String()
+			wToken, err := securestore.WrapSecretList(ctx, secstore, strings.Split(secretID, ","), uuid, time.Duration(ttl)*time.Minute)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Bootstrap Token: %s\n", wToken)
+		case 10:
 			fmt.Println("Exit")
 			return
 		default:

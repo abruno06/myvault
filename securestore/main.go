@@ -93,6 +93,24 @@ func setSecret(ctx context.Context, secstore SecretStore, secretID string, secre
 	return err
 }
 
+// this function will set a cubyhole for the list of secretsId
+func setCubbyholeList(ctx context.Context, secstore SecretStore, storePath string, s map[string]secret.Secret) error {
+	//extract the client from the SecretStore
+	client := secstore.Client
+	//extract the mountpath from the SecretStore
+	mountpath := secstore.Mountpath
+	// Add secretId as a key
+	combinedData := make(map[string]interface{})
+	for k, v := range s {
+		combinedData[k] = secret.ConvertFromSecret(v)
+	}
+	_, err := client.Secrets.CubbyholeWrite(ctx, storePath, combinedData, vault.WithMountPath(mountpath))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return err
+}
+
 // this function will set a cubbyhole for the given secretID
 func setCubbyhole(ctx context.Context, secstore SecretStore, secretId string, s secret.Secret) error {
 	//extract the client from the SecretStore
@@ -101,7 +119,10 @@ func setCubbyhole(ctx context.Context, secstore SecretStore, secretId string, s 
 	mountpath := secstore.Mountpath
 	data := secret.ConvertFromSecret(s)
 	//fmt.Printf("data: %v\n", data)
-	_, err := client.Secrets.CubbyholeWrite(ctx, secretId, data, vault.WithMountPath(mountpath))
+	// Add secretId as a key
+	combinedData := make(map[string]interface{})
+	combinedData[secretId] = data
+	_, err := client.Secrets.CubbyholeWrite(ctx, secretId, combinedData, vault.WithMountPath(mountpath))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,13 +130,13 @@ func setCubbyhole(ctx context.Context, secstore SecretStore, secretId string, s 
 }
 
 // take a cubbyhole and wrap the secret and return the wrapped token
-func WrapCubbyhole(ctx context.Context, secstore SecretStore, secretID string, ttl time.Duration) (string, error) {
+func WrapCubbyhole(ctx context.Context, secstore SecretStore, path string, ttl time.Duration) (string, error) {
 	//extract the client from the SecretStore
 	client := secstore.Client
 	//extract the mountpath from the SecretStore
 	mountpath := secstore.Mountpath
 	//read the cubbyhole
-	resp, err := client.Secrets.CubbyholeRead(ctx, secretID, vault.WithMountPath(mountpath), vault.WithResponseWrapping(ttl))
+	resp, err := client.Secrets.CubbyholeRead(ctx, path, vault.WithMountPath(mountpath), vault.WithResponseWrapping(ttl))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -153,8 +174,40 @@ func WrapSecret(ctx context.Context, secstore SecretStore, secretID string, ttl 
 	return WrapCubbyhole(ctx, secstore, secretID, ttl)
 }
 
+// this function take a list of secretId and wrap the cubbyhole and return the token
+func WrapSecretList(ctx context.Context, secstore SecretStore, secList []string, storePath string, ttl time.Duration) (string, error) {
+	//extract the client from the SecretStore
+	client := secstore.Client
+	//extract the mountpath from the SecretStore
+	mountpath := secstore.Mountpath
+	//extract the appname from the SecretStore
+	appname := secstore.Appname
+
+	//read the secret for the readAPPNAME()
+	s, err := client.Secrets.KvV2Read(ctx, appname, vault.WithMountPath(mountpath))
+	if err != nil {
+		log.Fatal(err)
+	}
+	chValue := make(map[string]secret.Secret)
+	for _, secretID := range secList {
+		//check if secretID exist
+		if s.Data.Data[secretID] == nil {
+			fmt.Printf("Secret ID: %s not found\n", secretID)
+			continue
+		}
+		//convert to secret
+		sec, _ := secret.ConvertToSecret(s.Data.Data[secretID].(map[string]interface{}))
+		chValue[secretID] = sec
+	}
+	err = setCubbyholeList(ctx, secstore, storePath, chValue)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return WrapCubbyhole(ctx, secstore, storePath, ttl)
+}
+
 // this function will unwrap a cubbyhole and return the secret
-func UnWrappeSecret(ctx context.Context, secstore SecretStore, token string) (secret.Secret, error) {
+func UnWrappeSecret(ctx context.Context, secstore SecretStore, token string) (map[string]secret.Secret, error) {
 	//extract the client from the SecretStore
 	client := secstore.Client
 
@@ -163,10 +216,15 @@ func UnWrappeSecret(ctx context.Context, secstore SecretStore, token string) (se
 	if err != nil {
 		log.Fatal(err)
 	}
-	//	fmt.Printf("Unwrapped response: %v\n", resp)
+	rValue := make(map[string]secret.Secret)
+	//fmt.Printf("Unwrapped response: %v\n", resp)
+	// loop to the resp.Data key
+	for key, v := range resp.Data {
+		rValue[key], _ = secret.ConvertToSecret(v.(map[string]interface{}))
+	}
 	//convert to secret
-	sec, _ := secret.ConvertToSecret(resp.Data)
-	return sec, err
+
+	return rValue, err
 }
 
 // this function will unwrap a secret and return a json string

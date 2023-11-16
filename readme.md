@@ -60,6 +60,11 @@ remark: do not put ',' in the comment piece if you do not want unexpected result
 
 The application has been splited to allow flexibility for future
 
+## Bootstrap
+
+This feature allow you to export a secret and share a one time token to retreive it.
+This is done using the wrap / unwrap feature and cubbyhole to store the expose secret
+
 ## TODO
 
 Improve the Secret 

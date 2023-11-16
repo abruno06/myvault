@@ -45,9 +45,15 @@ func ConvertToSecret(object map[string]interface{}) (Secret, bool) {
 		return rValue, ok
 	}
 	if object["LastUpdate"] == nil {
-		rValue.LastUpdate, _ = time.Parse("2006-01-02 15:04:05", "0001-01-01 00:00:00 ")
+		rValue.LastUpdate, _ = time.Parse("2006-01-02 15:04:05", "0001-01-01 00:00:00")
 	} else {
-		rValue.LastUpdate, _ = time.Parse("2006-01-02T15:04:05.999999-07:00", object["LastUpdate"].(string))
+		//fmt.Printf("LastUpdate: %s\n", object["LastUpdate"].(string))
+		var ep error
+		rValue.LastUpdate, ep = time.Parse("2006-01-02T15:04:05.999999-07:00", object["LastUpdate"].(string))
+		if ep != nil {
+			//fmt.Printf("Error parsing date: %s\n", ep)
+			rValue.LastUpdate, _ = time.Parse("2006-01-02 15:04:05", object["LastUpdate"].(string))
+		}
 	}
 	rValue.LastUpdateBy, _ = object["LastUpdateBy"].(string)
 	return rValue, ok

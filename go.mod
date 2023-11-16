@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/go-piv/piv-go v1.11.0
+	github.com/google/uuid v1.4.0
 	github.com/hashicorp/vault-client-go v0.4.2
 )
 
