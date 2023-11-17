@@ -9,7 +9,7 @@ import (
 type Secret struct {
 	Username     string    `json:"username"`
 	Credential   string    `json:"credential"`
-	URL          string    `json:"url"` //optional
+	URL          string    `json:"url,omitempty"` //optional
 	Comment      string    `json:"comment"`
 	LastUpdate   time.Time `json:"lastupdate"`
 	LastUpdateBy string    `json:"lastupdateby"`

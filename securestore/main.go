@@ -129,6 +129,25 @@ func setCubbyhole(ctx context.Context, secstore SecretStore, secretId string, s 
 	return err
 }
 
+// this function will set a cubyhole for the list of secretsId
+func SetServiceSecretCubbyhole(ctx context.Context, secstore SecretStore, s map[string]secret.Secret) error {
+	//extract the client from the SecretStore
+	client := secstore.Client
+	//extract the mountpath from the SecretStore
+	mountpath := secstore.Mountpath
+
+	var err error
+	for k, v := range s {
+		item := secret.ConvertFromSecret(v)
+		_, err = client.Secrets.CubbyholeWrite(ctx, k, item, vault.WithMountPath(mountpath))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return err
+}
+
 // take a cubbyhole and wrap the secret and return the wrapped token
 func WrapCubbyhole(ctx context.Context, secstore SecretStore, path string, ttl time.Duration) (string, error) {
 	//extract the client from the SecretStore

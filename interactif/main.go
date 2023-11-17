@@ -164,9 +164,7 @@ func AddSecretInteractive(ctx context.Context, secstore securestore.SecretStore)
 func UpdateSecretInteractive(ctx context.Context, secstore securestore.SecretStore) error {
 
 	//read the secret id from the user
-	fmt.Print(AskSecretID)
-	var secretID string
-	fmt.Scanln(&secretID)
+	secretID := AskSecret()
 
 	//	currentSecret := secret.ConvertFromSecret(securestore.GetSecret(ctx, secstore, secretID))
 
@@ -200,13 +198,18 @@ func UpdateSecretInteractive(ctx context.Context, secstore securestore.SecretSto
 	return err
 }
 
+// this function will ask the user an ID and it will delete it from vault
 func DeleteSecretInteractive(ctx context.Context, secstore securestore.SecretStore) error {
-	//read the secret id from the user
-	fmt.Print(AskSecretID)
-	var secretID string
-	fmt.Scanln(&secretID)
 	//delete the secret
-	err := securestore.DeleteSecret(ctx, secstore, secretID)
+	err := securestore.DeleteSecret(ctx, secstore, AskSecret())
 
 	return err
+}
+
+// Ask the user to enter a secret Id
+func AskSecret() string {
+	var secretID string
+	fmt.Print(AskSecretID)
+	fmt.Scanln(&secretID)
+	return secretID
 }
