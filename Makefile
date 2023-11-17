@@ -18,5 +18,5 @@ $(TOOLS):
 		#env GOOS=windows GOARCH=amd64 go build -o bin/windows/$@ cmd/$@/$@.go
 # Clean up the Go CLI tools
 clean:
-		rm -f bin/*
+		rm -rf bin/*
 
