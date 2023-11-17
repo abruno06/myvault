@@ -17,19 +17,15 @@ func main() {
 	}
 	//retreive the token from the Arg[1]
 	token := os.Args[1]
-	//fmt.Printf("myvault is running with APPNAME: %s and VAULTURL: %s\n", config.ReadAPPNAME(), config.ReadVaultURL())
 	var secstore securestore.SecretStore
 	var e error
 	//connect to vault
-	//secstore, e = securestore.ConnectVaultWithToken(ctx, token)
-	//var client *vault.Client
 	secstore, err := securestore.ConnectVault(ctx)
 	//r, e := vault.Unwrap[schema.KvV2ReadResponse](ctx, client, token)
 	if err != nil {
 		fmt.Printf("Error connecting to vault: %v\n", e)
 		os.Exit(1)
 	}
-	//fmt.Printf("Secret: %v\n", r)
 	//retreive the unWrapped token from input token
 	uWrapp, err := securestore.UnWrappeToken(ctx, secstore, token)
 	if err != nil {

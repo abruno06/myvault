@@ -21,7 +21,6 @@ import (
 // connect to vault with specific tls config
 func ConnectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (SecretStore, error) {
 	// prepare a client with the given base address
-
 	client, err := vault.New(
 		vault.WithAddress(config.ReadVaultURL()),
 		vault.WithRequestTimeout(30*time.Second),
@@ -29,7 +28,6 @@ func ConnectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (Secr
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	//set the transport configuration
 	httpclient := client.Configuration().HTTPClient
 	transport := httpclient.Transport
@@ -42,12 +40,9 @@ func ConnectVaultWithTLSConfig(ctx context.Context, tlsConfig *tls.Config) (Secr
 	}
 	if err != nil {
 		log.Fatal(err)
-
 	}
-
 	if err := client.SetToken(resp.Auth.ClientToken); err != nil {
 		log.Fatal(err)
-
 	}
 	fmt.Printf("Client Token: %v\n", resp.Auth.ClientToken)
 	return SecretStore{Client: client, Mountpath: config.ReadMountPath(), Appname: config.ReadAPPNAME()}, err
@@ -65,7 +60,6 @@ func ConnectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey, pin strin
 	if err := yubikey.VerifyPIN(pin); err != nil {
 		return SecretStore{}, err
 	}
-
 	// set the auth
 	auth := piv.KeyAuth{PIN: pin}
 	//get the private key accessors
@@ -78,7 +72,6 @@ func ConnectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey, pin strin
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// Create a certificate pool with the CA certificate
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
@@ -106,7 +99,6 @@ func ConnectVaulwithYubikey(ctx context.Context, yubikey *piv.YubiKey, pin strin
 // connect to vault using username and password and return the client
 func ConnectVaultWithUsernamePassword(ctx context.Context, username, password string) (SecretStore, error) {
 	// Prepare Vault Connection
-
 	// prepare a client with the given base address
 	client, err := vault.New(
 		vault.WithAddress(config.ReadVaultURL()),
@@ -120,20 +112,15 @@ func ConnectVaultWithUsernamePassword(ctx context.Context, username, password st
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if err := client.SetToken(resp.Auth.ClientToken); err != nil {
 		log.Fatal(err)
 
 	}
-
 	return SecretStore{Client: client, Mountpath: config.ReadMountPath(), Appname: config.ReadAPPNAME()}, err
-
 }
 
 // connect to vault using token
 func ConnectVaultWithToken(ctx context.Context, token string) (SecretStore, error) {
-	// Prepare Vault Connection
-
 	// prepare a client with the given base address
 	client, err := vault.New(
 		vault.WithAddress(config.ReadVaultURL()),
@@ -142,21 +129,15 @@ func ConnectVaultWithToken(ctx context.Context, token string) (SecretStore, erro
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if err := client.SetToken(token); err != nil {
 		log.Fatal(err)
-
 	}
-
 	return SecretStore{Client: client, Mountpath: config.ReadMountPath(), Appname: config.ReadAPPNAME()}, err
-
 }
 
 // connect to vault in annonymous mode
 func ConnectVault(ctx context.Context) (SecretStore, error) {
 	// Prepare Vault Connection
-
-	// prepare a client with the given base address
 	client, err := vault.New(
 		vault.WithAddress(config.ReadVaultURL()),
 		vault.WithRequestTimeout(30*time.Second),
@@ -164,7 +145,5 @@ func ConnectVault(ctx context.Context) (SecretStore, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	return SecretStore{Client: client, Mountpath: config.ReadMountPath(), Appname: config.ReadAPPNAME()}, err
-
 }

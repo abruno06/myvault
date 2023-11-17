@@ -44,7 +44,6 @@ func main() {
 			fmt.Printf("Error Renewing token: %v\n", err)
 			os.Exit(1)
 		}
-		//fmt.Printf("Token Renewed\n")
 	case "revoke":
 		//revoke the token
 		err := securestore.RevokeToken(ctx, secstore, token)
@@ -52,7 +51,6 @@ func main() {
 			fmt.Printf("Error Revoking token: %v\n", err)
 			os.Exit(1)
 		}
-	//	fmt.Printf("Token Revoked\n")
 	default:
 		fmt.Printf("Error: Invalid action\n")
 		usage()

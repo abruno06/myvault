@@ -15,8 +15,6 @@ func OpenYubikey(smartcard string) *piv.YubiKey {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//fmt.Printf("List all cards %s\n", cards)
-	// Connect to the YubiKey (you can specify the reader name, or leave it empty to use the default reader).
 	// Find a YubiKey and open the reader.
 	var yubikey *piv.YubiKey
 	for _, card := range cards {
@@ -35,9 +33,6 @@ func OpenYubikey(smartcard string) *piv.YubiKey {
 
 // read yubikey certificate
 func ReadYubikeyCertificate(yubikey *piv.YubiKey, slot piv.Slot) *x509.Certificate {
-	// Select the PIV slot you want to read (e.g., Authentication, Signature, etc.).
-	//slot := piv.SlotAuthentication // You can change this to the slot you are interested in.
-
 	//read the personal certificate
 	cert, err := yubikey.Certificate(slot)
 	if err != nil {

@@ -106,7 +106,6 @@ func ListCubbyhole(ctx context.Context, secstore SecretStore) (string, error) {
 func RenewToken(ctx context.Context, secstore SecretStore, token string) error {
 	//extract the client from the SecretStore
 	client := secstore.Client
-
 	//renew the token
 	resp, err := client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{Token: token})
 	if err != nil {
@@ -121,7 +120,6 @@ func RenewToken(ctx context.Context, secstore SecretStore, token string) error {
 func RevokeToken(ctx context.Context, secstore SecretStore, token string) error {
 	//extract the client from the SecretStore
 	client := secstore.Client
-
 	//revoke the token
 	resp, err := client.Auth.TokenRevokeSelf(ctx)
 	if err != nil {

@@ -152,8 +152,6 @@ func main() {
 		yk := smartcard.OpenYubikey(interactif.SelectSmartcard())
 		defer yk.Close()
 		cert := smartcard.ReadYubikeyCertificate(yk, smartcard.SelectSlot())
-		//fmt.Printf("Certificate: %v\n", cert)
-		//fmt.Printf("Certificate: %v\n", cert.PublicKey)
 		fmt.Printf("Certificate: %v\n", cert.PublicKeyAlgorithm)
 		//ask user pin
 		pin := interactif.ReadPin()
