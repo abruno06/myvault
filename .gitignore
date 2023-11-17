@@ -4,3 +4,6 @@ myvault copy.origo
 myvault
 securestore/main.go
 bootstrap
+service
+token
+cubbyhole
