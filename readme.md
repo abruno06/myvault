@@ -12,8 +12,8 @@ Have Hashicorp Vault knowledge
 
 ## Environment need
 
-You need a working Hashicorp Vault server supporting Certificates as authentication mechanism
-you can found all documentation needed
+You need a working Hashicorp Vault server supporting Certificates as authentication mechanism.
+You can found all documentation needed in following site
 https://developer.hashicorp.com/vault/docs/what-is-vault
 
 
