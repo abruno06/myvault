@@ -8,4 +8,4 @@ service
 token
 cubbyhole
 bin/
-bash/vault.sh
+bash/

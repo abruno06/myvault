@@ -54,7 +54,10 @@ func RandomPassword(lengh int, lowercase, uppercase, digit, special bool, specia
 	if special {
 		charList = charList + specialList
 	}
-
+	//if charList is empty use default
+	if charList == "" {
+		charList = " "
+	}
 	var rValue string
 	// this loop will generate a password until it matches the constraints
 	// the password will be returned as string
