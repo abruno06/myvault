@@ -67,8 +67,8 @@ This is done using the wrap / unwrap feature and cubbyhole to store the expose s
 
 ## TODO
 
-Improve the Secret 
-Improve the Error management
+- Improve the Secret 
+- Improve the Error management
 
 ## Known issue with piv
 
