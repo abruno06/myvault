@@ -84,3 +84,9 @@ tls: failed to verify certificate: x509: certificate signed by unknown authority
 This mean that your vault server certificate is not recognized by your OS.
 This is most probably because your Vault certificate is using a non public CA unknow by your computeur.
 Follow process related to your OS to make it part of trusted CA.
+
+## Dependancies 
+
+https://github.com/go-piv/piv-go
+https://github.com/hashicorp/vault-client-go
+https://github.com/google/uuid
