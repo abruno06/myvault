@@ -68,3 +68,9 @@ This is done using the wrap / unwrap feature and cubbyhole to store the expose s
 ## TODO
 
 Improve the Secret 
+
+## Known issue with piv
+
+in case of build or run error in linux, follow this link
+
+https://github.com/go-piv/piv-go/issues/114

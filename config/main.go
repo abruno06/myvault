@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 )
@@ -27,12 +28,32 @@ var User = func() string {
 	return "unknown"
 }()
 
+// this function will return how build a configuration file
+func Usage() {
+	//Configuration file format to be saved as config.json in the same directory as the binary
+	// {
+	// 	"VAULTURL": "https://xxx.xxx.xxx.xxx:8200"
+	// 	"APPNAME": "myapp",
+	// 	"CERTIFICATE": "web",
+	// 	"MOUNTPATH": "kv"
+	// }
+	fmt.Printf("Configuration file format to be saved as config.json in the same directory where the binary is run from\n")
+	fmt.Printf("{\n")
+	fmt.Printf("\t\"VAULTURL\": \"https://xxx.xxx.xxx.xxx:8200\"\n")
+	fmt.Printf("\t\"APPNAME\": \"myapp\",\n")
+	fmt.Printf("\t\"CERTIFICATE\": \"web\",\n")
+	fmt.Printf("\t\"MOUNTPATH\": \"kv\"\n")
+	fmt.Printf("}\n")
+
+}
+
 // read configuration file and return the configuration
 func readConfigFile() *json.Decoder {
 	//read the configuration file
 	// Open the file
 	configfile, err := os.Open("config.json")
 	if err != nil {
+		Usage()
 		log.Fatal(err)
 	}
 	// Parse the json file
