@@ -88,6 +88,6 @@ Follow process related to your OS to make it part of trusted CA.
 
 ## Dependancies 
 
-https://github.com/go-piv/piv-go
-https://github.com/hashicorp/vault-client-go
-https://github.com/google/uuid
+- https://github.com/go-piv/piv-go
+- https://github.com/hashicorp/vault-client-go
+- https://github.com/google/uuid
