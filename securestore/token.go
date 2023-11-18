@@ -84,7 +84,7 @@ func ListCubbyhole(ctx context.Context, secstore SecretStore) (string, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Cubbyhole response: %v\n", resp.Data.Keys)
+	//fmt.Printf("Cubbyhole response: %v\n", resp.Data.Keys)
 	rValue := make(map[string]secret.Secret)
 	for _, v := range resp.Data.Keys {
 		//get the cubbyhole entry value
