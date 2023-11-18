@@ -1,23 +1,23 @@
 # myvault
 
-## description
+## Description
 This little application is a prototype to interconnect Yukikey with Vault using piv mode of Yubikey.
 This allow to build a quick and dirty password manager where information get saved in secure way into Vault and accessible from all location where the Vault server is accessible.
 
-## pre req 
+## Prereq 
 
 Have a yubikey (or equivalent) key supporting piv mode to store private key and authentication certificate in it.
 Have certificate loaed to the key
 Have Hashicorp Vault knowledge
 
-## environment need
+## Environment need
 
 You need a working Hashicorp Vault server supporting Certificates as authentication mechanism
 you can found all documentation needed
 https://developer.hashicorp.com/vault/docs/what-is-vault
 
 
-## setup the Vault and Yukibey configuration
+## Setup the Vault and Yukibey configuration
 
 - Configure Vault with Auth with TLS certificate : https://developer.hashicorp.com/vault/docs/auth/cert
 - Install your Yubikey Authentication Certificate into the Auth cert uisng either the UI, the CLI or the API
@@ -50,7 +50,7 @@ go build cmd/cli/myvault.go
 ## Batch Load
 
 you can use a CSV File to load your data:
-the format is the following:
+the format is the following if your are using the built in secret format
 
 ```SecretID, Username, Credential, URL, Comment```
 
@@ -74,3 +74,13 @@ Improve the Secret
 in case of build or run error in linux, follow this link
 
 https://github.com/go-piv/piv-go/issues/114
+
+## Known errors
+
+```
+tls: failed to verify certificate: x509: certificate signed by unknown authority
+```
+
+This mean that your vault server certificate is not recognized by your OS.
+This is most probably because your Vault certificate is using a non public CA unknow by your computeur.
+Follow process related to your OS to make it part of trusted CA.
