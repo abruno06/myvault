@@ -70,3 +70,22 @@ func ConvertFromSecret(secret Secret) map[string]interface{} {
 	rValue["LastUpdateBy"] = secret.LastUpdateBy
 	return rValue
 }
+
+// helper to compare two maps
+func compareMaps(map1 map[string]interface{}, map2 map[string]interface{}) bool {
+	if len(map1) != len(map2) {
+		return false
+	}
+	for key, value := range map1 {
+		if map2[key] != value {
+			return false
+		}
+	}
+	// check if all keys in map2 are in map1
+	for key, value := range map2 {
+		if map1[key] != value {
+			return false
+		}
+	}
+	return true
+}
