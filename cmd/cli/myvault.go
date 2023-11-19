@@ -83,7 +83,7 @@ func menu(ctx context.Context, secstore securestore.SecretStore) {
 			fmt.Println("Exit")
 			return
 		default:
-			fmt.Println("Exit")
+			fmt.Println("by Default Exit")
 			return
 		}
 
