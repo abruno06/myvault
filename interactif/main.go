@@ -14,6 +14,26 @@ import (
 	"github.com/abruno06/myvault/securestore"
 )
 
+// define Interactif as a struct to allow testing capabilities
+type Interactif interface {
+	ReadLine() string
+	Print(s string)
+}
+
+// default Interactif will be stdin/stdout
+type DefaultInteractif struct{}
+
+// define the DefaultInteractif methods
+func (i DefaultInteractif) ReadLine() string {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	return scanner.Text()
+}
+
+func (i DefaultInteractif) Print(s string) {
+	fmt.Print(s)
+}
+
 // this package will contain all the functions to interact with the user
 // it will be used by the main.go file
 var SecretFieldNames = []string{"Username", "Credential", "URL", "LastUpdate", "LastUpdateBy", "Comment"}
@@ -201,7 +221,7 @@ func UpdateSecretInteractive(ctx context.Context, secstore securestore.SecretSto
 // this function will ask the user an ID and it will delete it from vault
 func DeleteSecretInteractive(ctx context.Context, secstore securestore.SecretStore) error {
 	//delete the secret
-	err := securestore.DeleteSecret(ctx, secstore, AskSecret())
+	err := securestore.DeleteSecret(ctx, secstore, AskSecretI(DefaultInteractif{}))
 
 	return err
 }
@@ -211,5 +231,12 @@ func AskSecret() string {
 	var secretID string
 	fmt.Print(AskSecretID)
 	fmt.Scanln(&secretID)
+	return secretID
+}
+
+// Ask the user to enter a secret Id
+func AskSecretI(i Interactif) string {
+	i.Print(AskSecretID)
+	secretID := i.ReadLine()
 	return secretID
 }
